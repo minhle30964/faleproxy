@@ -1,4 +1,4 @@
-name: Faleproxy CI
+name: Faleproxy CI/CD Pipeline
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
+  # Test job: Runs all tests to ensure code quality
   test:
     runs-on: ubuntu-latest
 
@@ -27,6 +28,7 @@ jobs:
       run: npm ci
       
     - name: Run tests
+      id: run-tests
       run: npm run test:ci
       
     - name: Upload coverage report
@@ -35,8 +37,18 @@ jobs:
         name: coverage-report
         path: coverage/
         
+    # Create a job summary with test results
+    - name: Create job summary
+      run: |
+        echo "## Test Results ✅" >> $GITHUB_STEP_SUMMARY
+        echo "All tests have passed successfully." >> $GITHUB_STEP_SUMMARY
+        echo "Ready for deployment to production." >> $GITHUB_STEP_SUMMARY
+        
+  # The deploy job will only run when:
+  # 1. All tests have passed successfully (needs: test ensures this)
+  # 2. The commit is on the main or master branch
   deploy:
-    needs: test
+    needs: test # This ensures deploy only runs when tests pass
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     
@@ -54,8 +66,21 @@ jobs:
     - name: Pull Vercel Environment Information
       run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
       
+    # Add a deployment status to the summary
+    - name: Update deployment status
+      run: |
+        echo "## Deployment Status 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "Preparing to deploy to Vercel production environment." >> $GITHUB_STEP_SUMMARY
+      
     - name: Build Project Artifacts
       run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
       
     - name: Deploy Project Artifacts to Vercel
+      id: deploy
       run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+      
+    # Add deployment confirmation to the summary
+    - name: Deployment confirmation
+      run: |
+        echo "## Deployment Complete ✨" >> $GITHUB_STEP_SUMMARY
+        echo "Faleproxy has been successfully deployed to production." >> $GITHUB_STEP_SUMMARY
