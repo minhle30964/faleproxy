@@ -47,10 +47,19 @@ jobs:
   # The deploy job will only run when:
   # 1. All tests have passed successfully (needs: test ensures this)
   # 2. The commit is on the main or master branch
+  #
+  # IMPORTANT: You must disable Vercel GitHub auto-deployments by:
+  # 1. Go to your Vercel project settings
+  # 2. Navigate to Git Integration
+  # 3. Turn off "Deploy on Push" option
   deploy:
     needs: test # This ensures deploy only runs when tests pass
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    # Required environment variables in GitHub Secrets:
+    # - VERCEL_TOKEN: Your Vercel API token
+    # - VERCEL_ORG_ID: Your Vercel organization ID
+    # - VERCEL_PROJECT_ID: Your Vercel project ID
     
     steps:
     - uses: actions/checkout@v3
@@ -63,8 +72,9 @@ jobs:
     - name: Install Vercel CLI
       run: npm install --global vercel@latest
       
+    # This tells Vercel not to deploy automatically from its GitHub integration
     - name: Pull Vercel Environment Information
-      run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }} --project=${{ secrets.VERCEL_PROJECT_ID }}
       
     # Add a deployment status to the summary
     - name: Update deployment status
@@ -73,11 +83,12 @@ jobs:
         echo "Preparing to deploy to Vercel production environment." >> $GITHUB_STEP_SUMMARY
       
     - name: Build Project Artifacts
-      run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }} --project=${{ secrets.VERCEL_PROJECT_ID }}
       
+    # Explicitly set this as a manually triggered deployment
     - name: Deploy Project Artifacts to Vercel
       id: deploy
-      run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+      run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }} --project=${{ secrets.VERCEL_PROJECT_ID }}
       
     # Add deployment confirmation to the summary
     - name: Deployment confirmation
