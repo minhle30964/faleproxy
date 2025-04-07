@@ -49,6 +49,8 @@ describe('Yale to Fale replacement logic', () => {
   });
 
   test('should handle text that has no Yale references', () => {
+    // For this test, we'll create a new HTML string without any instances of "Yale"
+    // and verify that our replacement logic doesn't modify anything
     const htmlWithoutYale = `
       <!DOCTYPE html>
       <html>
@@ -57,30 +59,35 @@ describe('Yale to Fale replacement logic', () => {
       </head>
       <body>
         <h1>Hello World</h1>
-        <p>This is a test page with no Yale references.</p>
+        <p>This is a test page with no special terms.</p>
       </body>
       </html>
     `;
     
-    const $ = cheerio.load(htmlWithoutYale);
+    // First, check that the original doesn't contain "Yale"
+    expect(htmlWithoutYale).not.toContain('Yale');
     
-    // Apply the same replacement logic
+    const $ = cheerio.load(htmlWithoutYale);
+    const originalParagraph = $('p').text();
+    
+    // Apply the same replacement logic but with word boundaries
     $('body *').contents().filter(function() {
       return this.nodeType === 3;
     }).each(function() {
       const text = $(this).text();
-      const newText = text.replace(/Yale/g, 'Fale').replace(/yale/g, 'fale');
+      const newText = text
+        .replace(/\bYale\b/g, 'Fale')
+        .replace(/\byale\b/g, 'fale')
+        .replace(/\bYALE\b/g, 'FALE');
       if (text !== newText) {
         $(this).replaceWith(newText);
       }
     });
     
-    const modifiedHtml = $.html();
-    
-    // Content should remain the same
-    expect(modifiedHtml).toContain('<title>Test Page</title>');
-    expect(modifiedHtml).toContain('<h1>Hello World</h1>');
-    expect(modifiedHtml).toContain('<p>This is a test page with no Yale references.</p>');
+    // The content should remain exactly the same since there are no instances of "Yale"
+    expect($('p').text()).toBe(originalParagraph);
+    expect($('title').text()).toBe('Test Page');
+    expect($('h1').text()).toBe('Hello World');
   });
 
   test('should handle case-insensitive replacements', () => {
@@ -94,7 +101,11 @@ describe('Yale to Fale replacement logic', () => {
       return this.nodeType === 3;
     }).each(function() {
       const text = $(this).text();
-      const newText = text.replace(/Yale/gi, 'Fale');
+      // Match the app.js implementation with separate replacements for each case
+      const newText = text
+        .replace(/\bYale\b/g, 'Fale')
+        .replace(/\byale\b/g, 'fale')
+        .replace(/\bYALE\b/g, 'FALE');
       if (text !== newText) {
         $(this).replaceWith(newText);
       }
@@ -102,6 +113,7 @@ describe('Yale to Fale replacement logic', () => {
     
     const modifiedHtml = $.html();
     
+    // Match the app.js implementation's output
     expect(modifiedHtml).toContain('FALE University, Fale College, and fale medical school');
   });
 });
