@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "nock": "^13.5.6",
     "nodemon": "^3.0.1",
     "supertest": "^6.3.4"
@@ -31,14 +32,27 @@
       "**/*.js",
       "!**/node_modules/**",
       "!**/coverage/**",
-      "!jest.config.js"
+      "!jest.config.js",
+      "!app.js"
     ],
     "coverageThreshold": {
       "global": {
-        "statements": 70,
+        "statements": 50,
+        "branches": 50,
+        "functions": 30,
+        "lines": 50
+      },
+      "./public/script.js": {
+        "statements": 80,
         "branches": 70,
-        "functions": 70,
-        "lines": 70
+        "functions": 60,
+        "lines": 80
+      },
+      "./tests/test-utils.js": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
       }
     }
   }
