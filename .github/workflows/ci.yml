@@ -1,90 +1,42 @@
 name: Faleproxy CI/CD Pipeline
-
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-
+    branches:
+      - main
 jobs:
-  # Test job: Runs all tests to ensure code quality
-  test:
+  Test:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
+      - uses: actions/checkout@v2
       
-    - name: Run tests
-      id: run-tests
-      run: npm run test:ci
-      
-    - name: Upload coverage report
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: coverage/
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          
+      - name: Install dependencies
+        run: npm ci
         
-    # Create a job summary with test results
-    - name: Create job summary
-      run: |
-        echo "## Test Results " >> $GITHUB_STEP_SUMMARY
-        echo "All tests have passed successfully." >> $GITHUB_STEP_SUMMARY
-        echo "Ready for deployment to production." >> $GITHUB_STEP_SUMMARY
-        
-  # The deploy job will only run when:
-  # 1. All tests have passed successfully (needs: test ensures this)
-  # 2. The commit is on the main or master branch
-  #
-  # IMPORTANT: You must disable Vercel GitHub auto-deployments by:
-  # 1. Go to your Vercel project settings
-  # 2. Navigate to Git Integration
-  # 3. Turn off "Deploy on Push" option
-  deploy:
-    needs: test # This ensures deploy only runs when tests pass
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      - name: Run tests
+        run: npm test
+
+  Deploy-Production:
+    needs: Test
     runs-on: ubuntu-latest
-    # Required environment variables in GitHub Secrets:
-    # - VERCEL_DEPLOY_HOOK: Your Vercel deploy hook URL (https://api.vercel.com/v1/integrations/deploy/...)
-    # - VERCEL_TOKEN: Your Vercel API token
-
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18.x'
-        
-    # Add a deployment status to the summary
-    - name: Update deployment status
-      run: |
-        echo "## Deployment Status " >> $GITHUB_STEP_SUMMARY
-        echo "Preparing to deploy to Vercel production environment." >> $GITHUB_STEP_SUMMARY
-    
-    # Use the Vercel deploy hook directly
-    - name: Deploy to Vercel using deploy hook
-      id: deploy
-      run: |
-        curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}" \
-          -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          -d '{"gitRef": "${{ github.sha }}"}'
+      - uses: actions/checkout@v2
       
-    # Add deployment confirmation to the summary
-    - name: Deployment confirmation
-      run: |
-        echo "## Deployment Complete " >> $GITHUB_STEP_SUMMARY
-        echo "Faleproxy has been successfully deployed to production." >> $GITHUB_STEP_SUMMARY
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+       
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
